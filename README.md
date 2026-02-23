@@ -1,6 +1,6 @@
 
 ```bash
-git clone https://github.com/GITHUB_USERNAME/REPO_NAME.git webhoster && cd webhoster && chmod +x install.sh && ./install.sh
+git clone https://github.com/skyks030/webhoster.git webhoster && cd webhoster && chmod +x install.sh && ./install.sh
 ```
 
 ### Was macht der Befehl?
