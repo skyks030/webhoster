@@ -1,30 +1,36 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Startseite</title>
     <style>
-        body, html {
+        body,
+        html {
             margin: 0;
             padding: 0;
-            background-color: #fff; /* Neutral white background to match PDFs */
+            background-color: #fff;
+            /* Neutral white background to match PDFs */
             width: 100%;
             overflow-x: hidden;
             font-family: sans-serif;
         }
+
         #pdf-container {
             width: 100%;
             display: flex;
             flex-direction: column;
         }
+
         canvas {
             display: block;
             width: 100%;
             height: auto;
-            margin: 0; 
+            margin: 0;
             padding: 0;
         }
+
         #loading {
             text-align: center;
             padding: 50px;
@@ -32,9 +38,14 @@
             color: #666;
         }
     </style>
+    <link id="dynamic-favicon" rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>">
+    <link id="apple-favicon" rel="apple-touch-icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>">
     <!-- Use PDF.js from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
+
 <body>
     <div id="loading">Lädt Inhalte...</div>
     <div id="pdf-container"></div>
@@ -53,20 +64,39 @@
                 const pdf = await pdfjsLib.getDocument(url).promise;
                 loading.style.display = 'none';
 
+                try {
+                    const metadataData = await pdf.getMetadata();
+                    const titleFromPdf = metadataData?.info?.Title?.trim();
+                    const domainName = window.location.hostname.replace(/^www\./, '');
+
+                    if (titleFromPdf) {
+                        document.title = titleFromPdf;
+                    } else if (domainName) {
+                        document.title = domainName;
+                    } else {
+                        document.title = "Startseite";
+                    }
+                } catch (metaErr) {
+                    console.warn("Konnte PDF Metadaten nicht lesen:", metaErr);
+                    const domainName = window.location.hostname.replace(/^www\./, '');
+                    document.title = domainName || "Startseite";
+                }
+
                 for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
                     const page = await pdf.getPage(pageNum);
-                    
+
                     // Render reasonably high-res for crispness
                     const viewport = page.getViewport({ scale: 2.5 });
-                    
+
                     const canvas = document.createElement('canvas');
                     canvas.height = viewport.height;
                     canvas.width = viewport.width;
                     container.appendChild(canvas);
-                    
-                    await page.render({ 
-                        canvasContext: canvas.getContext('2d'), 
-                        viewport: viewport 
+
+                    // Das gerenderte Bild auf die Leinwand zeichen
+                    await page.render({
+                        canvasContext: canvas.getContext('2d'),
+                        viewport: viewport
                     }).promise;
                 }
             } catch (error) {
@@ -75,7 +105,62 @@
             }
         }
 
+        // Einfaches, abstraktes Favicon generieren (unabhängig von der PDF)
+        function generateAbstractFavicon() {
+            try {
+                // Eine Farbe basierend auf dem aktuellen Domain/Port auswählen
+                let seed = 0;
+                const host = window.location.host;
+                for (let i = 0; i < host.length; i++) {
+                    seed += host.charCodeAt(i);
+                }
+                // Multiplizieren mit 137 (dem "Goldenen Winkel"), damit selbst benachbarte 
+                // Ports (wie 8001 und 8002) komplett unterschiedliche Farben auf dem Farbkreis bekommen.
+                const hue = (seed * 137) % 360;
+
+                // SVG-String für das Icon generieren (wird von Safari/Chrome verlässlicher aktualisiert als Canvas)
+                const svgIcon = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                        <circle fill="hsl(${hue}, 70%, 60%)" cx="16" cy="16" r="16"/>
+                        <circle fill="hsl(${(hue + 40) % 360}, 80%, 75%)" cx="10" cy="10" r="8"/>
+                        <circle fill="hsl(${(hue + 80) % 360}, 80%, 40%)" cx="22" cy="22" r="7"/>
+                    </svg>
+                `.trim();
+
+                const svgDataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgIcon);
+
+                // Chrome/Safari Cache umgehen durch Neusetzen des href bei vorhandenen Links
+                let link = document.getElementById('dynamic-favicon');
+                if (link) {
+                    link.href = svgDataUrl;
+                } else {
+                    link = document.createElement('link');
+                    link.id = 'dynamic-favicon';
+                    link.rel = 'icon';
+                    link.type = 'image/svg+xml';
+                    link.href = svgDataUrl;
+                    document.head.appendChild(link);
+                }
+
+                let appleLink = document.getElementById('apple-favicon');
+                if (appleLink) {
+                    appleLink.href = svgDataUrl;
+                } else {
+                    // Für ältere/bestimmte iOS Safari Versionen Backup
+                    appleLink = document.createElement('link');
+                    appleLink.id = 'apple-favicon';
+                    appleLink.rel = 'apple-touch-icon';
+                    appleLink.href = svgDataUrl;
+                    document.head.appendChild(appleLink);
+                }
+            } catch (e) {
+                console.warn("Favicon konnte nicht generiert werden:", e);
+            }
+        }
+
+        generateAbstractFavicon();
         loadFakeWebsite();
     </script>
 </body>
+
 </html>
