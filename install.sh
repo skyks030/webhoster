@@ -3,6 +3,29 @@ set -e
 
 echo "=== Starte Installation des Webhosters ==="
 
+# 0. Update vom GitHub Repository prüfen
+echo "0. Prüfe auf Updates vom GitHub-Repository..."
+if [ -d ".git" ]; then
+    git fetch
+    LOCAL=$(git rev-parse HEAD 2>/dev/null || echo "")
+    REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "$LOCAL")
+    
+    if [ "$LOCAL" != "$REMOTE" ] && [ -n "$LOCAL" ]; then
+        echo " -> Neue Änderungen auf GitHub gefunden! Updates werden heruntergeladen..."
+        git pull
+        echo " -> Updates erfolgreich geladen und installiert."
+        
+        # Da sich das Skript evtl. selbst aktualisiert hat, starten wir es neu:
+        echo " -> Starte Installationsskript neu, um die aktuellen Änderungen zu übernehmen..."
+        exec ./install.sh "$@"
+    else
+        echo " -> Lokale Version ist bereits auf dem neuesten Stand."
+    fi
+else
+    echo " -> Dies ist kein Git-Repository. Update-Prüfung wird übersprungen."
+fi
+echo ""
+
 # 1. Überprüfen, ob Docker installiert ist
 if ! command -v docker &> /dev/null; then
     echo "Fehler: Docker ist nicht installiert."
@@ -12,16 +35,16 @@ fi
 
 # 2. Prüfen, ob der Data-Ordner und die benötigten PDFs existieren
 # Falls nicht, legen wir Dummy-Dateien an, damit der Bau nicht fehlschlägt.
-if [ ! -d "Data" ]; then
-    echo "Data-Ordner nicht gefunden. Erstelle Data-Ordner..."
-    mkdir -p Data
+if [ ! -d "data" ]; then
+    echo "data-Ordner nicht gefunden. Erstelle data-Ordner..."
+    mkdir -p data
 fi
 
 for i in {1..5}; do
-    if [ ! -f "Data/site${i}.pdf" ]; then
-        echo "Warnung: Data/site${i}.pdf fehlt! Erstelle eine leere Platzhalter-Datei."
-        echo "%PDF-1.1" > "Data/site${i}.pdf"
-        echo "Platzhalter PDF für Port 800${i}" >> "Data/site${i}.pdf"
+    if [ ! -f "data/site${i}.pdf" ]; then
+        echo "Warnung: data/site${i}.pdf fehlt! Erstelle eine leere Platzhalter-Datei."
+        echo "%PDF-1.1" > "data/site${i}.pdf"
+        echo "Platzhalter PDF für Port 800${i}" >> "data/site${i}.pdf"
     fi
 done
 

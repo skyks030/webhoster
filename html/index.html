@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Startseite</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            background-color: #fff; /* Neutral white background to match PDFs */
+            width: 100%;
+            overflow-x: hidden;
+            font-family: sans-serif;
+        }
+        #pdf-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            margin: 0; 
+            padding: 0;
+        }
+        #loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2rem;
+            color: #666;
+        }
+    </style>
+    <!-- Use PDF.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+    <div id="loading">Lädt Inhalte...</div>
+    <div id="pdf-container"></div>
+
+    <script>
+        // Start PDF.js Worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        async function loadFakeWebsite() {
+            try {
+                // Fetch the PDF logic
+                const url = '/content.pdf';
+                const container = document.getElementById('pdf-container');
+                const loading = document.getElementById('loading');
+
+                const pdf = await pdfjsLib.getDocument(url).promise;
+                loading.style.display = 'none';
+
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    
+                    // Render reasonably high-res for crispness
+                    const viewport = page.getViewport({ scale: 2.5 });
+                    
+                    const canvas = document.createElement('canvas');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    container.appendChild(canvas);
+                    
+                    await page.render({ 
+                        canvasContext: canvas.getContext('2d'), 
+                        viewport: viewport 
+                    }).promise;
+                }
+            } catch (error) {
+                console.error('Fehler beim Laden der PDF:', error);
+                document.getElementById('loading').innerText = 'Fehler beim Laden der Webseite.';
+            }
+        }
+
+        loadFakeWebsite();
+    </script>
+</body>
+</html>
